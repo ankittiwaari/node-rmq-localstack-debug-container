@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/home/localstack/data
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "./Users/ankitt/Documents/work/learn/express-ts/localstack:/home/localstack/data"
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq-container
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+  nodeapp:
+    build: ./
+    container_name: nodeapp
+    restart: always
+    depends_on:
+      - rabbitmq
+      - localstack
+    environment:
+      # RabbitMQ
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      # LocalStack S3
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+    ports:
+      - "3000:3000"     
+      - "9229:9229"
+    volumes:
+      - ./:/usr/src/app
+    command: npm run debug
+
+volumes:
+  rabbitmq_data:
