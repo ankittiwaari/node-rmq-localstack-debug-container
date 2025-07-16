@@ -48,7 +48,7 @@ export async function main() {
 
   
   console.log(await Body.transformToString());
-  console.log("Body must be above")
+  
 
   // Confirm resource deletion.
   const prompt = createInterface({

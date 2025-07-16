@@ -11,11 +11,11 @@ export default class MakeAndUploadFiles{
             s3Destination: req.body.s3Destination
         };
 
-        const tasks = this.createTasks(taskData)                
+        const tasks = this.createTasks(taskData)
         return res.sendStatus(200)
     }
 
     static async createTasks(taskData:TaskRequestBody){
         return TaskQueue.publishMessages(taskData.fileCount)
-    }
+    }        
 }
