@@ -24,18 +24,16 @@ export default class AWS {
 
   static async upload({ bucketName, filePath }: S3UploadOptions) {
     const client = this.getClient();
-
-    // ✅ Ensure bucket exists
     try {
       await client.send(
         new CreateBucketCommand({
           Bucket: bucketName,
         })
       );
-      console.log(`✅ Bucket created: ${bucketName}`);
+      console.log(`Bucket created: ${bucketName}`);
     } catch (err: any) {
       if (err.name === "BucketAlreadyOwnedByYou") {
-        console.log(`ℹ️ Bucket already exists: ${bucketName}`);
+        console.log(`Bucket already exists: ${bucketName}`);
       } else {
         throw err;
       }
@@ -44,7 +42,6 @@ export default class AWS {
     const fileStream = fs.createReadStream(filePath);
     const fileKey = path.basename(filePath);
 
-    // ✅ Use multipart upload via `Upload` helper
     const parallelUpload = new Upload({
       client,
       params: {
@@ -52,23 +49,22 @@ export default class AWS {
         Key: fileKey,
         Body: fileStream,
       },
-      // Optional config
-      queueSize: 4, // how many parts to upload in parallel
-      partSize: 5 * 1024 * 1024, // 5MB per part (AWS minimum)
-      leavePartsOnError: false, // auto-cleanup on error
+      queueSize: 4,
+      partSize: 5 * 1024 * 1024,
+      leavePartsOnError: false, 
     });
 
     parallelUpload.on("httpUploadProgress", (progress) => {
       console.log(
-        `📤 Upload progress: ${progress.loaded}/${progress.total} bytes`
+        `Upload progress: ${progress.loaded}/${progress.total} bytes`
       );
     });
 
     try {
       const result = await parallelUpload.done();
-      console.log(`✅ Upload completed!`, result);
+      console.log(`Upload completed!`, result);
     } catch (err) {
-      console.error("❌ Upload failed:", err);
+      console.error("Upload failed:", err);
     }
   }
 
@@ -78,15 +74,15 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
     const fileSize = fs.statSync(filePath).size;
     const fileStream = fs.createReadStream(filePath, { highWaterMark: 5 * 1024 * 1024 }); // 5MB chunks
 
-    // ✅ 1. Ensure bucket exists
+    // Ensure bucket exists
     try {
       await client.send(new CreateBucketCommand({ Bucket: bucketName }));
-      console.log(`✅ Bucket created: ${bucketName}`);
+      console.log(`Bucket created: ${bucketName}`);
     } catch (err: any) {
       if (err.name !== "BucketAlreadyOwnedByYou") throw err;
     }
 
-    // ✅ 2. Initiate multipart upload
+    // Initiate multipart upload
     const createResp = await client.send(
       new CreateMultipartUploadCommand({
         Bucket: bucketName,
@@ -95,14 +91,14 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
     );
 
     const uploadId = createResp.UploadId!;
-    console.log(`✅ Initiated multipart upload, UploadId: ${uploadId}`);
+    console.log(`Initiated multipart upload, UploadId: ${uploadId}`);
 
     const partSize = 5 * 1024 * 1024; // AWS minimum 5MB
     let partNumber = 1;
     const uploadedParts: { ETag?: string; PartNumber: number }[] = [];
 
     try {
-      // ✅ 3. Read file in chunks and upload each part
+      // Read file in chunks and upload each part
       let buffer = Buffer.alloc(0);
 
       for await (const chunk of fileStream) {
@@ -124,7 +120,7 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
         }
       }
 
-      // ✅ 4. Upload remaining buffer if file < partSize
+      // Upload remaining buffer if file < partSize
       if (buffer.length > 0) {
         await this.uploadPart({
           client,
@@ -137,7 +133,7 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
         });
       }
 
-      // ✅ 5. Complete multipart upload
+      //Complete multipart upload
       const completeResp = await client.send(
         new CompleteMultipartUploadCommand({
           Bucket: bucketName,
@@ -147,9 +143,9 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
         })
       );
 
-      console.log(`✅ Upload complete! Location: ${completeResp.Location}`);
+      console.log(`Upload complete! Location: ${completeResp.Location}`);
     } catch (err) {
-      console.error("❌ Upload failed, aborting...", err);
+      console.error("Upload failed, aborting...", err);
 
       // Abort multipart upload on error
       await client.send(
@@ -179,7 +175,7 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
     partNumber: number;
     uploadedParts: { ETag?: string; PartNumber: number }[];
   }) {
-    console.log(`📤 Uploading part #${partNumber} (${buffer.length} bytes)...`);
+    console.log(`Uploading part #${partNumber} (${buffer.length} bytes)...`);
 
     const partResp = await client.send(
       new UploadPartCommand({
@@ -191,7 +187,7 @@ static async uploadMultipart({ bucketName, filePath }: S3UploadOptions) {
       })
     );
 
-    console.log(`✅ Uploaded part #${partNumber}, ETag: ${partResp.ETag}`);
+    console.log(`Uploaded part #${partNumber}, ETag: ${partResp.ETag}`);
 
     uploadedParts.push({
       ETag: partResp.ETag,
